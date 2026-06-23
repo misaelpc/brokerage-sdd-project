@@ -13,6 +13,7 @@
 1. [Overview](#1-overview)
    - [1.0 Agent instructions (mandatory)](#10-agent-instructions-mandatory)
    - [1.5 Repository layout](#15-repository-layout)
+   - [1.6 Dev constraints](#16-dev-constraints)
 2. [Phase 1 — Quarkus Project Creation](#2-phase-1--quarkus-project-creation)
 3. [Phase 2 — DDD with Hexagonal Architecture](#3-phase-2--ddd-with-hexagonal-architecture)
 4. [Phase 3 — Testing Plan (>90% Coverage)](#4-phase-3--testing-plan-90-coverage)
@@ -127,6 +128,20 @@ The repository root holds **specification and agent guidance** only (`BUILD_SPEC
 | **Application root** | `brokerage-core-api/` | All Quarkus/Maven source, config, Docker Compose, and tests |
 
 **Do not** generate Quarkus project files (`pom.xml`, `src/`, `mvnw`, etc.) at the repository root. All paths in Phases 1–4 are relative to **`brokerage-core-api/`** unless explicitly noted as repository root (e.g. `.github/workflows/`).
+
+### 1.6 Dev constraints
+
+Local setup rules for agents and developers. Resolve mismatches before `./mvnw quarkus:dev`.
+
+| Area | Constraint |
+|------|------------|
+| **Java** | JDK must match `maven.compiler.release` in `brokerage-core-api/pom.xml` (currently **23**; CI may use 25). Use **SDKMAN** + committed `.sdkmanrc`. Run and compile with the **same** JDK — verify `java -version` and `./mvnw -version`. After a JDK change: `./mvnw clean`. Enforcer plugin must stay enabled. |
+| **Shell** | SDKMAN init is **bash/zsh** only — do not `source ~/.zshrc` in **fish**. Fish: set `JAVA_HOME` to `$HOME/.sdkman/candidates/java/current` and avoid a stale hardcoded `/Library/Java/...` path. |
+| **PostgreSQL** | Dev DB runs via `brokerage-core-api/compose.yaml`. Host port **5433** maps to container 5432 (avoids conflict with a local Postgres on 5432). JDBC URL in `application.properties` **must match** compose host port and credentials. Symptom of wrong DB: `role "brokerage" does not exist`. |
+| **Quarkus CLI** | Use `--output-directory=brokerage-core-api`; extensions `quarkus-junit`, `quarkus-junit-mockito` (not legacy `junit5-mockito`). Flatten if CLI creates a nested directory. |
+| **Coverage** | Phases 1–2: `./mvnw verify -Djacoco.skip=true`. Enable JaCoCo gate only from Phase 3 / CI. |
+| **GraphQL** | Order `type` argument is a **String** (`"MARKET"`, `"LIMIT"`), not a GraphQL enum literal. |
+| **Smoke test** | From `brokerage-core-api/`: `docker compose up -d` → `./mvnw clean quarkus:dev` → `/q/health`, `/graphiql`, queries `balance` and `catalog`. |
 
 ---
 
