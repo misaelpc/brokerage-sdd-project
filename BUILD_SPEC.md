@@ -12,6 +12,7 @@
 
 1. [Overview](#1-overview)
    - [1.0 Agent instructions (mandatory)](#10-agent-instructions-mandatory)
+   - [1.5 Repository layout](#15-repository-layout)
 2. [Phase 1 — Quarkus Project Creation](#2-phase-1--quarkus-project-creation)
 3. [Phase 2 — DDD with Hexagonal Architecture](#3-phase-2--ddd-with-hexagonal-architecture)
 4. [Phase 3 — Testing Plan (>90% Coverage)](#4-phase-3--testing-plan-90-coverage)
@@ -27,6 +28,8 @@
 ### 1.0 Agent instructions (mandatory)
 
 When implementing **any phase** of this build specification, the agent **must always follow** [`ddd_skill.md`](./ddd_skill.md). Read it at the start of each session and apply it to every code change, test, and refactor.
+
+**Project location:** Scaffold and implement all application code under **`brokerage-core-api/`** (see [§1.5 Repository layout](#15-repository-layout)). Do not place Quarkus/Maven artifacts at the repository root.
 
 `ddd_skill.md` is the authoritative source for:
 
@@ -101,16 +104,41 @@ Trading is **simulated** — no real market execution.
 | **Driven adapter — events** | `infra.event` | Domain event publication (in-process initially) |
 | **Cross-cutting** | `infra.config`, `infra.problem` | Seeding, error mapping |
 
+### 1.5 Repository layout
+
+The repository root holds **specification and agent guidance** only (`BUILD_SPEC.md`, `ddd_skill.md`, etc.). The runnable Quarkus application **must** be scaffolded in a dedicated subdirectory:
+
+```text
+<repository-root>/
+├── BUILD_SPEC.md
+├── ddd_skill.md
+├── …other specs…
+└── brokerage-core-api/          ← Quarkus Maven project (application root)
+    ├── pom.xml
+    ├── mvnw
+    ├── compose.yaml
+    ├── src/
+    └── …
+```
+
+| Term | Path | Contents |
+|------|------|----------|
+| **Repository root** | `.` | Build specs, design docs, CI config (`.github/`) |
+| **Application root** | `brokerage-core-api/` | All Quarkus/Maven source, config, Docker Compose, and tests |
+
+**Do not** generate Quarkus project files (`pom.xml`, `src/`, `mvnw`, etc.) at the repository root. All paths in Phases 1–4 are relative to **`brokerage-core-api/`** unless explicitly noted as repository root (e.g. `.github/workflows/`).
+
 ---
 
 ## 2. Phase 1 — Quarkus Project Creation
 
 ### 2.1 Generate the project
 
-Use the Quarkus CLI or [code.quarkus.io](https://code.quarkus.io) with these settings:
+From the **repository root**, create the Quarkus project inside **`brokerage-core-api/`** using the Quarkus CLI or [code.quarkus.io](https://code.quarkus.io) with these settings:
 
 | Setting | Value |
 |---------|-------|
+| **Project directory** | `brokerage-core-api` |
 | **Group** | `com.brokerage` |
 | **Artifact** | `brokerage-core-api` |
 | **Version** | `1.0.0-SNAPSHOT` |
@@ -134,10 +162,11 @@ Use the Quarkus CLI or [code.quarkus.io](https://code.quarkus.io) with these set
 | `quarkus-junit5-mockito` | Mockito integration |
 | `rest-assured` (test scope) | GraphQL HTTP tests |
 
-**CLI equivalent:**
+**CLI equivalent** (run from repository root; creates `brokerage-core-api/`):
 
 ```bash
 quarkus create app com.brokerage:brokerage-core-api:1.0.0-SNAPSHOT \
+  --output=brokerage-core-api \
   --extension='smallrye-graphql,hibernate-orm-panache,jdbc-postgresql,flyway,hibernate-validator,smallrye-health,jacoco,junit5,junit5-mockito' \
   --java=25 \
   --no-code
@@ -278,7 +307,7 @@ brokerage.seed.enabled=false
 
 PostgreSQL runs in a container. The database is **created automatically** by the image (`POSTGRES_DB`); **Flyway** applies schema migrations on app startup — no manual `createdb` required.
 
-**`compose.yaml`** at project root:
+**`brokerage-core-api/compose.yaml`** (application root):
 
 ```yaml
 services:
@@ -352,7 +381,7 @@ Use `DECIMAL(19,4)` for money, `VARCHAR` for symbols/emails, UUID or BIGINT for 
 Create empty package structure (Phase 2 fills implementation):
 
 ```text
-src/main/java/com/brokerage/core/
+brokerage-core-api/src/main/java/com/brokerage/core/
 ├── application/
 │   ├── command/
 │   ├── data/
@@ -408,7 +437,7 @@ target/
 
 ### 2.8 Phase 1 exit criteria
 
-- [ ] `docker compose up -d` starts PostgreSQL; `./mvnw quarkus:dev` starts on port 8080 and Flyway applies migrations
+- [ ] From `brokerage-core-api/`: `docker compose up -d` starts PostgreSQL; `./mvnw quarkus:dev` starts on port 8080 and Flyway applies migrations
 - [ ] GraphiQL available at `/graphiql`
 - [ ] Health check responds at `/q/health`
 - [ ] Flyway migrations apply cleanly on empty database
@@ -777,6 +806,10 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+defaults:
+  run:
+    working-directory: brokerage-core-api
+
 jobs:
   build-and-test:
     name: Build & Test
@@ -802,7 +835,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: jacoco-report
-          path: target/site/jacoco/
+          path: brokerage-core-api/target/site/jacoco/
 
   coverage-report:
     name: Coverage Summary
@@ -854,9 +887,10 @@ Configure on `main`:
 
 ### 5.5 Local pre-push parity
 
-Developers should run before pushing:
+Developers should run before pushing (from `brokerage-core-api/`):
 
 ```bash
+cd brokerage-core-api
 ./mvnw verify -Djacoco.skip=false
 ```
 
@@ -884,8 +918,8 @@ Optional: add Maven Wrapper if not generated by Quarkus CLI.
 
 ### Demo script (acceptance)
 
-1. Run `docker compose up -d` (PostgreSQL container; DB created automatically)
-2. Run `./mvnw quarkus:dev` (Flyway applies schema migrations on startup)
+1. `cd brokerage-core-api && docker compose up -d` (PostgreSQL container; DB created automatically)
+2. `./mvnw quarkus:dev` (Flyway applies schema migrations on startup)
 3. Open GraphiQL → query `catalog` and `balance`
 4. `registerInvestor` (or use seeded Andrea López)
 5. `depositCash` 100,000 MXN
@@ -898,7 +932,7 @@ Optional: add Maven Wrapper if not generated by Quarkus CLI.
 
 ## Appendix A — GraphQL Contract
 
-Full schema as defined in `DesignTradingDDD.md` §13. File: `src/main/resources/graphql/schema.graphqls`.
+Full schema as defined in `DesignTradingDDD.md` §13. File: `brokerage-core-api/src/main/resources/graphql/schema.graphqls`.
 
 **Queries:** `investor`, `instruments`, `instrument`, `marketPrice`, `portfolio`, `cashAccount`, `orders`, `activityFeed`, plus v1 aliases `balance`, `catalog`, `instrumentBySymbol`.
 
