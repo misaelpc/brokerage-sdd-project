@@ -2,7 +2,7 @@
 
 > **Purpose:** Phased implementation guide for the simulated trading backend **brokerage-core-api**, built with **Quarkus**, **DDD + Hexagonal Architecture**, **>90% test coverage**, and **GitHub Actions CI**.
 >
-> **Sources:** `ddd_skill.md`, `DesignTradingDDD.md`, `FUNCTIONAL_SPEC.md`
+> **Sources:** `ddd_skill.md` *(mandatory for agents)*, `DesignTradingDDD.md`, `FUNCTIONAL_SPEC.md`
 >
 > **Target stack:** Java 25 · Quarkus 3.x · GraphQL · PostgreSQL · JUnit 5 · Mockito · Testcontainers
 
@@ -11,6 +11,7 @@
 ## Table of Contents
 
 1. [Overview](#1-overview)
+   - [1.0 Agent instructions (mandatory)](#10-agent-instructions-mandatory)
 2. [Phase 1 — Quarkus Project Creation](#2-phase-1--quarkus-project-creation)
 3. [Phase 2 — DDD with Hexagonal Architecture](#3-phase-2--ddd-with-hexagonal-architecture)
 4. [Phase 3 — Testing Plan (>90% Coverage)](#4-phase-3--testing-plan-90-coverage)
@@ -22,6 +23,23 @@
 ---
 
 ## 1. Overview
+
+### 1.0 Agent instructions (mandatory)
+
+When implementing **any phase** of this build specification, the agent **must always follow** [`ddd_skill.md`](./ddd_skill.md). Read it at the start of each session and apply it to every code change, test, and refactor.
+
+`ddd_skill.md` is the authoritative source for:
+
+| Area | What to follow |
+|------|----------------|
+| **DDD** | Ubiquitous language, small aggregates, identity references, invariants inside aggregate boundaries |
+| **Layers** | Interior (`domain`, `application`) vs Exterior (`infra`) — no framework imports in domain |
+| **Naming** | PascalCase classes, camelCase methods, package layout per DDD layers |
+| **Code style** | Factory methods, `Optional`/Null Object (never `null` from domain), fail-fast guards |
+| **Testing** | Given/When/Then, camelCase test names, required JUnit assertions, `@DisplayName` in ubiquitous language |
+| **Security & CI** | Input validation, OWASP practices, branch-by-abstraction, feature toggles |
+
+**Conflict resolution:** If this document and `ddd_skill.md` disagree on *coding standards or structure*, follow `ddd_skill.md`. If they disagree on *project scope, phases, or deliverables*, follow `BUILD_SPEC.md`. Document any intentional exception to `ddd_skill.md` rules (e.g., in a comment or ADR).
 
 ### 1.1 Product goal
 
